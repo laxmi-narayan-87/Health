@@ -1,181 +1,173 @@
-# Laxmi Healthcare Appointment & Triage Manager
+# Laxmi Healthcare
 
-A full-stack patient scheduling, symptom triage, and care coordination platform with Gemini 2.5 AI integration, Google Calendar OAuth 2.0 sync, role-based portals (Patient, Doctor, Admin), slot holding, doctor leave management, and email queuing with retry.
+Full-stack patient scheduling, symptom triage, and care coordination platform powered by Gemini 2.5 AI.
+
+**Live Demo**: [https://health-production-d4d9.up.railway.app/](https://health-production-d4d9.up.railway.app/)
 
 ---
 
-## 1. Setup & Installation
+## Tech Stack
 
-Built with **React 19 (Vite)** frontend and **Express.js** backend on Node.js with TypeScript.
+- **Frontend**: React 19, Vite, TypeScript, Tailwind CSS
+- **Backend**: Express.js, TypeScript
+- **AI**: Gemini 2.5 Flash
+- **Calendar**: Google Calendar OAuth 2.0
+- **Database**: Local JSON file with atomic queued writes
 
-### Prerequisites
-- Node.js v18+
-- npm v9+
+---
 
-### Installation
+## Quick Start
 
 ```bash
+git clone <repo>
 cd healthcare-appointment-manager
 npm install
 cp .env.example .env
+npm run dev
 ```
 
-Configure your `.env` with API credentials (see Section 2).
+Opens at `http://localhost:3000`.
 
-### Run
+### Production
 
-- **Development**: `npm run dev` — starts on http://localhost:3000
-- **Production**: `npm run build && npm run start`
-
----
-
-## 2. Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `GEMINI_API_KEY` | No | Gemini AI key. Falls back to heuristics engine if omitted. |
-| `APP_URL` | Yes | Host URL (e.g., `http://localhost:3000`) |
-| `GOOGLE_CLIENT_ID` | No | For Google Calendar OAuth 2.0 |
-| `GOOGLE_CLIENT_SECRET` | No | For Google Calendar OAuth 2.0 |
-| `SMTP_HOST` | No | SMTP server for email notifications |
-| `SMTP_PORT` | No | SMTP port |
-| `SMTP_USER` | No | SMTP username |
-| `SMTP_PASS` | No | SMTP password |
-| `SMTP_FROM` | No | Default: `noreply@clinicmanager.com` |
-
-If SMTP is unconfigured, emails are simulated and logged in the Admin Email Sandbox.
+```bash
+npm run build && npm run start
+```
 
 ---
 
-## 3. Database Schema
+## Environment Variables
 
-Uses an offline-first local `db.json` with atomic queued writes to prevent race conditions.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GEMINI_API_KEY` | No | — | Gemini AI key (falls back to heuristics engine) |
+| `APP_URL` | Yes | `http://localhost:3000` | Host URL |
+| `GOOGLE_CLIENT_ID` | No | — | Google Calendar OAuth |
+| `GOOGLE_CLIENT_SECRET` | No | — | Google Calendar OAuth |
+| `SMTP_HOST` | No | — | SMTP server |
+| `SMTP_PORT` | No | — | SMTP port |
+| `SMTP_USER` | No | — | SMTP username |
+| `SMTP_PASS` | No | — | SMTP password |
+| `SMTP_FROM` | No | `noreply@clinicmanager.com` | Sender address |
+
+Emails are simulated and logged in the Admin Sandbox if SMTP is unconfigured.
+
+---
+
+## Database Schema
+
+Six entities stored in `db.json` with serialized write operations.
 
 ### Users
-| Field | Type | Description |
+| Field | Type | Notes |
 |---|---|---|
-| `id` | string | Primary key (e.g., `pat1`, `doc1`) |
-| `name` | string | Full name |
-| `email` | string | Unique email |
-| `role` | string | `patient`, `doctor`, or `admin` |
+| `id` | string | e.g. `pat1`, `doc1` |
+| `name` | string | |
+| `email` | string | Unique |
+| `role` | string | `patient` / `doctor` / `admin` |
 
 ### Doctor Profiles
-| Field | Type | Description |
+| Field | Type | Notes |
 |---|---|---|
-| `doctorId` | string | Primary key, references User |
-| `name` | string | Professional name |
-| `specialization` | string | `Cardiology`, `Pediatrics`, or `General Medicine` |
+| `doctorId` | string | PK, references User |
+| `name` | string | |
+| `specialization` | string | Cardiology / Pediatrics / General Medicine |
 | `workingHours` | object | `{ start: "09:00", end: "17:00" }` |
-| `slotDuration` | number | Minutes per consultation (e.g., 30) |
-| `leaveDays` | string[] | Leave dates in `YYYY-MM-DD` format |
+| `slotDuration` | number | Minutes per slot |
+| `leaveDays` | string[] | `YYYY-MM-DD` dates |
 
 ### Appointments
-| Field | Type | Description |
+| Field | Type | Notes |
 |---|---|---|
-| `id` | string | Primary key |
-| `patientId` | string | References User |
-| `patientName` | string | For quick lookup |
-| `patientEmail` | string | For communications |
-| `doctorId` | string | References DoctorProfile |
-| `doctorName` | string | For quick lookup |
-| `date` | string | `YYYY-MM-DD` |
-| `timeSlot` | string | `HH:MM` |
-| `symptoms` | string | Patient's reported symptoms |
-| `urgencyLevel` | string | `Low`, `Medium`, or `High` (AI-predicted) |
-| `aiPreVisitSummary` | string | AI triage summary |
-| `aiPreVisitQuestions` | string[] | Suggested doctor questions |
-| `postVisitNotes` | string | Clinician notes |
-| `prescription` | string | Recommended medications |
+| `id` | string | PK |
+| `patientId` / `patientName` / `patientEmail` | string | Patient info |
+| `doctorId` / `doctorName` | string | Doctor info |
+| `date` / `timeSlot` | string | `YYYY-MM-DD` / `HH:MM` |
+| `symptoms` | string | Patient input |
+| `urgencyLevel` | string | Low / Medium / High (AI) |
+| `aiPreVisitSummary` / `aiPreVisitQuestions` | string / string[] | AI triage |
+| `postVisitNotes` / `prescription` | string | Clinician input |
 | `aiPostVisitSummary` | string | Patient-friendly AI summary |
-| `status` | string | `Scheduled`, `Cancelled`, or `Completed` |
-| `calendarEventId` | string | Google Calendar event ID |
+| `status` | string | Scheduled / Cancelled / Completed |
+| `calendarEventId` | string | Google Calendar ref |
 | `createdAt` | string | ISO timestamp |
 
 ### Slot Holds
-| Field | Type | Description |
+| Field | Type | Notes |
 |---|---|---|
-| `id` | string | Primary key |
-| `doctorId` | string | References DoctorProfile |
-| `date` | string | Hold date |
-| `timeSlot` | string | Hold time |
-| `patientId` | string | References User |
-| `expiresAt` | number | Unix epoch (10-minute validity) |
+| `id` | string | PK |
+| `doctorId` / `date` / `timeSlot` | string | Lock target |
+| `patientId` | string | Who holds it |
+| `expiresAt` | number | Unix ms (10 min) |
 
 ### Email Logs
-| Field | Type | Description |
+| Field | Type | Notes |
 |---|---|---|
-| `id` | string | Primary key |
-| `toEmail` | string | Recipient email |
-| `toName` | string | Recipient name |
-| `subject` | string | Subject line |
-| `body` | string | Plain text body |
+| `id` | string | PK |
+| `toEmail` / `toName` / `subject` / `body` | string | Message details |
 | `sentAt` | string | ISO timestamp |
-| `type` | string | `booking`, `reminder`, `cancellation`, or `leave_conflict` |
-| `status` | string | `sent`, `pending`, or `failed` |
-| `retryCount` | number | Retry attempts |
-| `error` | string | Error message on failure |
+| `type` | string | booking / reminder / cancellation / leave_conflict |
+| `status` | string | sent / pending / failed |
+| `retryCount` | number | Attempts |
+| `error` | string | Failure details |
 
 ### Medication Reminders
-| Field | Type | Description |
+| Field | Type | Notes |
 |---|---|---|
-| `id` | string | Primary key |
+| `id` | string | PK |
 | `appointmentId` | string | References Appointment |
-| `patientName` | string | Patient name |
-| `patientEmail` | string | Target email |
-| `doctorName` | string | Prescribing clinician |
-| `medication` | string | Medicine name |
-| `frequency` | string | e.g., `Once daily`, `Twice daily` |
+| `patientName` / `patientEmail` | string | Patient |
+| `doctorName` | string | Prescriber |
+| `medication` / `frequency` | string | e.g. Amoxicillin / Twice daily |
 | `startDate` | string | `YYYY-MM-DD` |
-| `lastSentDate` | string | Tracks last alert to avoid duplicates |
-| `active` | boolean | Active status |
+| `lastSentDate` | string | Dedup tracker |
+| `active` | boolean | |
 
 ---
 
-## 4. API Reference
+## API Endpoints
 
-All payloads and responses use `application/json`. Authenticated routes require `Authorization: Bearer <userId>`.
+All responses are `application/json`. Authenticated routes use `Authorization: Bearer <userId>`.
 
-### Authentication
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/register` | Register a new patient |
-| POST | `/api/auth/login` | Authenticate user |
-| GET | `/api/auth/session` | Validate current session |
+### Auth
+| Method | Endpoint |
+|---|---|
+| POST | `/api/auth/register` |
+| POST | `/api/auth/login` |
+| GET | `/api/auth/session` |
 
-### Doctors & Leave
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/doctors` | List all doctors |
-| POST | `/api/admin/doctors` | Create/update doctor profile (Admin) |
-| POST | `/api/admin/leave` | Mark doctor leave (Admin) |
+### Doctors
+| Method | Endpoint |
+|---|---|
+| GET | `/api/doctors` |
+| POST | `/api/admin/doctors` |
+| POST | `/api/admin/leave` |
 
 ### Appointments
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/appointments` | Get filtered appointments |
-| POST | `/api/appointments/hold` | Request 10-min slot hold (Patient) |
-| POST | `/api/appointments/book` | Confirm booking (Patient) |
-| POST | `/api/appointments/cancel` | Cancel appointment |
-| POST | `/api/appointments/reschedule` | Reschedule appointment |
-| POST | `/api/appointments/post-visit` | Submit post-visit notes (Doctor) |
+| Method | Endpoint |
+|---|---|
+| GET | `/api/appointments` |
+| POST | `/api/appointments/hold` |
+| POST | `/api/appointments/book` |
+| POST | `/api/appointments/cancel` |
+| POST | `/api/appointments/reschedule` |
+| POST | `/api/appointments/post-visit` |
 
-### Reminders & Logs
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/reminders` | Get active reminders |
-| POST | `/api/reminders/trigger` | Trigger reminders manually (Admin) |
-| GET | `/api/logs/system` | System logs (Admin) |
-| GET | `/api/logs/emails` | Email transaction logs (Admin) |
-| POST | `/api/emails/retry` | Retry failed email (Admin) |
-| GET | `/api/logs/calendar` | Calendar sync logs (Admin) |
+### Admin
+| Method | Endpoint |
+|---|---|
+| GET | `/api/reminders` |
+| POST | `/api/reminders/trigger` |
+| GET | `/api/logs/system` |
+| GET | `/api/logs/emails` |
+| POST | `/api/emails/retry` |
+| GET | `/api/logs/calendar` |
 
 ---
 
-## 5. LLM Prompts & Error Handling
+## AI Prompts
 
-Uses Gemini 2.5 Flash (`gemini-2.5-flash`) via `@google/genai` SDK with structured JSON schema enforcement.
-
-### Pre-Visit Symptom Analysis
+### Pre-Visit Triage
 ```
 Analyse these symptoms and return: urgency level (Low / Medium / High), chief complaint, and three suggested questions for the doctor. Symptoms: <symptoms>
 
@@ -189,7 +181,7 @@ Return your response as a JSON object with EXACTLY the following keys:
 CRITICAL: Return ONLY valid, minified JSON. Do not include markdown codeblocks or backticks.
 ```
 
-### Post-Visit Clinical Summary
+### Post-Visit Summary
 ```
 Convert these clinical notes into a patient-friendly summary with medication schedule and follow-up steps: <notes>
 
@@ -204,41 +196,37 @@ CRITICAL: Return ONLY valid, minified JSON. Do not include markdown codeblocks o
 ```
 
 ### Graceful Degradation
-- If `GEMINI_API_KEY` is missing, falls back to the Clinical Heuristics Engine
-- Try-catch blocks with schema guards catch API failures and log diagnostics
-- Appointments remain bookable and post-visit records are saved regardless of AI availability
+- Falls back to Clinical Heuristics Engine if `GEMINI_API_KEY` is missing
+- Try-catch + schema guards log errors without breaking the booking flow
 
 ---
 
-## 6. Google Calendar Integration
+## Google Calendar Setup
 
-1. Create a Google Cloud Console project and name it (e.g., `Laxmi Clinic Manager`)
+1. Create a project in [Google Cloud Console](https://console.cloud.google.com)
 2. Enable **Google Calendar API**
-3. Configure OAuth consent screen (External, scopes: `.../auth/calendar`, `.../auth/calendar.events`)
-4. Create OAuth 2.0 credentials (Web application) with redirect URI: `http://localhost:3000/api/auth/google/callback`
+3. Configure **OAuth consent screen** (External, scopes: `.../auth/calendar`, `.../auth/calendar.events`)
+4. Create **OAuth 2.0 credentials** (Web app) — redirect URI: `http://localhost:3000/api/auth/google/callback`
 5. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`
 
 ---
 
-## 7. System Design
+## Architecture Highlights
 
 ### Double-Booking Prevention
-Slot writes are serialized through a backend promise chain. Before confirming a booking, the system verifies no `Scheduled` appointment exists for the same `doctorId`, `date`, and `timeSlot`. Conflicts return `409 Conflict`.
+Write operations are serialized via a promise chain. Each booking verifies no existing `Scheduled` appointment for the same doctor/date/slot before committing. Conflicts return `409`.
 
-### Slot Hold Mechanism
-When a patient opens a slot, a 10-minute hold is registered in `slotHolds`. During the hold:
-- The slot is hidden from others
-- Concurrent hold requests on the same slot return `409`
-- A background cleaner runs every 15 seconds to flush expired holds
+### Slot Hold System
+Patients get a 10-minute exclusive hold. Held slots are hidden from others. Concurrent hold requests return `409`. Expired holds are purged every 15 seconds.
 
-### Doctor Leave Resolution
-When leave is registered for a doctor:
-1. The date is added to `leaveDays`, blocking new bookings
-2. Existing `Scheduled` appointments on that date are cancelled
-3. Affected patients are notified via SMTP
-4. Google Calendar events are removed
+### Leave Management
+Registering leave for a doctor:
+1. Blocks new bookings on that date
+2. Auto-cancels existing appointments
+3. Notifies affected patients via email
+4. Removes corresponding Google Calendar events
 
-### Notification Reliability
-- Emails are initialized as `pending`; failures are logged with error details
-- A cron trigger (`POST /api/reminders/trigger`) retries failed emails (up to 3 attempts)
-- Admin dashboard provides visual indicators and manual retry controls
+### Email Reliability
+- Emails start as `pending`; failures are logged with error details
+- Admin can trigger retries via `POST /api/reminders/trigger` (up to 3 attempts)
+- Dashboard shows send status with manual retry controls
