@@ -1,0 +1,6 @@
+{
+  "name": "Healthcare Appointment Manager",
+  "description": "A comprehensive healthcare appointment booking and follow-up platform with separate Patient, Doctor, and Admin portals, featuring AI symptom summaries, post-visit notes generator, email logs, and Google Calendar sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
